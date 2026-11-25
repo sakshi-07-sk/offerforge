@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  Admin
+  HR
+  Candidate
+}
+
+enum OfferStatus {
+  Draft
+  Sent
+  Accepted
+  Rejected
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(HR)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  templates Template[]
+  candidates Candidate[]
+  offers     Offer[]
+  notifications Notification[]
+}
+
+model Template {
+  id        String   @id @default(uuid())
+  name      String
+  content   String   @db.Text
+  createdBy String
+  user      User     @relation(fields: [createdBy], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  offers    Offer[]
+}
+
+model Candidate {
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  phone       String?
+  designation String
+  department  String
+  joiningDate DateTime
+  salary      String
+  createdBy   String
+  user        User     @relation(fields: [createdBy], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  offers      Offer[]
+}
+
+model Offer {
+  id               String   @id @default(uuid())
+  candidateId      String
+  templateId       String
+  generatedContent String   @db.Text
+  status           OfferStatus @default(Draft)
+  createdBy        String
+  user             User     @relation(fields: [createdBy], references: [id])
+  candidate        Candidate @relation(fields: [candidateId], references: [id])
+  template         Template  @relation(fields: [templateId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  versions         OfferVersion[]
+  statusLogs       OfferStatusLog[]
+  signature        Signature?
+}
+
+model OfferVersion {
+  id            String   @id @default(uuid())
+  offerId       String
+  content       String   @db.Text
+  versionNumber Int
+  offer         Offer    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+}
+
+model OfferStatusLog {
+  id          String   @id @default(uuid())
+  offerId     String
+  status      OfferStatus
+  changedBy   String   // User ID
+  offer       Offer    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+}
+
+model Signature {
+  id           String   @id @default(uuid())
+  offerId      String   @unique
+  signatureUrl String   @db.Text
+  ipAddress    String?
+  offer        Offer    @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  message   String
+  isRead    Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
